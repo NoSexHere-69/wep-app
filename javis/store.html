@@ -389,6 +389,50 @@
     text-transform:uppercase;
   }
 
+  /* ---- tap-to-start overlay (unlocks audio + kicks off boot) ---- */
+  .tap-start{
+    position:fixed; inset:0;
+    z-index:200;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    text-align:center;
+    padding:24px;
+    cursor:pointer;
+    transition:opacity .4s ease;
+  }
+  .tap-start.hide{opacity:0; pointer-events:none;}
+  .tap-pulse{
+    width:64px;height:64px;
+    border-radius:50%;
+    border:2px solid var(--cyan);
+    box-shadow:0 0 16px rgba(75,217,255,0.6);
+    animation:tapPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes tapPulse{
+    0%,100%{ transform:scale(1); opacity:1; }
+    50%{ transform:scale(1.15); opacity:.5; }
+  }
+  .tap-text{
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(15px, 3.6vw, 19px);
+    letter-spacing:.04em;
+    color:var(--text);
+    margin:0;
+    text-shadow:0 0 8px rgba(75,217,255,0.5);
+  }
+  .tap-sub{
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(11px, 2vw, 13px);
+    letter-spacing:.08em;
+    color:var(--muted);
+    margin:0;
+    text-transform:uppercase;
+  }
+
   /* ---- JARVIS-style boot sequence ---- */
   .boot{
     position:fixed; inset:0;
@@ -460,6 +504,12 @@
 <body>
 <div class="bg-fx"></div>
 <div class="particles" id="particles"></div>
+
+<div class="tap-start" id="tapStart">
+  <div class="tap-pulse"></div>
+  <p class="tap-text">กดปุ่มอะไรก็ได้ 1 ครั้ง</p>
+  <p class="tap-sub">เพื่อเริ่มระบบ</p>
+</div>
 
 <div class="boot" id="boot">
   <div class="boot-ring"></div>
@@ -601,8 +651,8 @@ function loadApps(){
   }
 }
 
-runBootSequence(() => { bootTypingDone = true; tryReveal(); });
 loadApps();
+// boot typing sequence now starts after the tap-to-start overlay (see below)
 // ------------------------------------------------
 
 // ---- HUD sound effects (synthesized, no audio files needed) ----
@@ -753,14 +803,17 @@ function startMusicIfNeeded(){
   document.head.appendChild(tag);
 })();
 
-// browsers require a user gesture before audio can play — this catches the first tap anywhere
-function firstGestureHandler(){
+// browsers require a user gesture before audio can play — the tap-to-start
+// overlay provides that gesture, unlocks the music, and kicks off the boot sequence
+function onTapStart(){
+  const tapStart = document.getElementById("tapStart");
+  tapStart.classList.add("hide");
+  setTimeout(() => { tapStart.style.display = "none"; }, 450);
   startMusicIfNeeded();
-  document.removeEventListener("click", firstGestureHandler);
-  document.removeEventListener("touchend", firstGestureHandler);
+  runBootSequence(() => { bootTypingDone = true; tryReveal(); });
 }
-document.addEventListener("click", firstGestureHandler);
-document.addEventListener("touchend", firstGestureHandler);
+document.getElementById("tapStart").addEventListener("click", onTapStart, { once: true });
+document.getElementById("tapStart").addEventListener("touchend", onTapStart, { once: true });
 </script>
 </body>
 </html>
