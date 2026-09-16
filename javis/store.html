@@ -507,8 +507,8 @@
 
 <div class="tap-start" id="tapStart">
   <div class="tap-pulse"></div>
-  <p class="tap-text">กดปุ่มอะไรก็ได้ 1 ครั้ง</p>
-  <p class="tap-sub">เพื่อเริ่มระบบ</p>
+  <p class="tap-text">press any key</p>
+  <p class="tap-sub">to start the system</p>
 </div>
 
 <div class="boot" id="boot">
@@ -768,20 +768,29 @@ backdrop.addEventListener("click", ()=>{ sfx.cancel(); closeSheet(); });
   }
 })();
 
-// ---- background music (YouTube, plays on first tap due to browser autoplay rules) ----
+// ---- background music (YouTube) ----
+// Autoplaying WITH sound before any tap is blocked by every modern browser, no way around it.
+// Workaround: the player autoplays muted the instant it's ready (always allowed), then the
+// first tap on the screen unmutes it — synchronously, inside the tap handler, so the browser
+// counts it as a real user gesture and won't block it.
 const BG_VIDEO_ID = "pAgnJDJN4VA"; // AC/DC - official video, played hidden/off-screen for audio only
 let ytPlayer = null;
 let ytReady = false;
-let musicStarted = false;
+let unmuteRequested = false;
 
 function onYouTubeIframeAPIReady(){
   ytPlayer = new YT.Player("bgMusic", {
     height: "1",
     width: "1",
     videoId: BG_VIDEO_ID,
-    playerVars: { autoplay: 0, controls: 0, disablekb: 1, playsinline: 1, loop: 1, playlist: BG_VIDEO_ID },
+    playerVars: { autoplay: 1, mute: 1, controls: 0, disablekb: 1, playsinline: 1, loop: 1, playlist: BG_VIDEO_ID },
     events: {
-      onReady: function(){ ytReady = true; startMusicIfNeeded(); },
+      onReady: function(e){
+        ytReady = true;
+        e.target.mute();
+        e.target.playVideo();
+        if(unmuteRequested) unmuteNow();
+      },
       onStateChange: function(e){
         if(e.data === YT.PlayerState.ENDED){ ytPlayer.playVideo(); } // loop
       }
@@ -789,12 +798,19 @@ function onYouTubeIframeAPIReady(){
   });
 }
 
-function startMusicIfNeeded(){
-  if(musicStarted || !ytReady || !ytPlayer) return;
+function unmuteNow(){
+  if(!ytReady || !ytPlayer) return;
   try{
+    ytPlayer.unMute();
+    ytPlayer.setVolume(100);
     ytPlayer.playVideo();
-    musicStarted = true;
   }catch(e){ /* ignore */ }
+}
+
+// called directly from the tap handler so it stays inside the user-gesture call stack
+function startMusicIfNeeded(){
+  unmuteRequested = true;
+  unmuteNow(); // no-op until ytReady, but that's fine — onReady will call it then
 }
 
 (function loadYouTubeApi(){

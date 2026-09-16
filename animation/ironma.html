@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Deadline Loading</title>
+<style>
+  :root{
+    --bg:#0b0e14;
+    --bar-bg:#1c2230;
+    --red:#3fae5c;
+    --red-dark:#276b39;
+    --text:#e6e6e6;
+    --accent:#ffd24d;
+  }
+  html,body{
+    margin:0;
+    height:100%;
+    background:var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Courier New', monospace;
+  }
+  .stage{
+    width:min(700px,90vw);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:22px;
+  }
+  .track-wrap{
+    position:relative;
+    width:100%;
+    height:120px;
+  }
+  .track{
+    position:absolute;
+    top:50%;
+    left:0;
+    right:0;
+    transform:translateY(-50%);
+    height:26px;
+    background:var(--bar-bg);
+    border-radius:13px;
+    overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .fill{
+    position:absolute;
+    top:0;
+    left:0;
+    bottom:0;
+    width:0%;
+    background:linear-gradient(90deg,var(--red-dark),var(--red));
+    border-radius:13px 0 0 13px;
+  }
+  .reaper{
+    position:absolute;
+    top:50%;
+    left:0%;
+    width:56px;
+    height:70px;
+    transform:translate(-50%,-68%);
+    transition:left .05s linear;
+  }
+  .worker{
+    position:absolute;
+    top:50%;
+    right:-2px;
+    width:56px;
+    height:66px;
+    transform:translateY(-62%);
+  }
+  .label{
+    text-align:center;
+    color:var(--accent);
+    letter-spacing:1px;
+    font-size:15px;
+  }
+  .label .days{
+    font-size:22px;
+    font-weight:bold;
+    display:block;
+    margin-top:4px;
+  }
+  svg{ display:block; width:100%; height:100%; }
+  .skull-blink{ opacity:1; }
+
+  @keyframes bob{
+    0%,100%{ transform:translate(-50%,-68%) translateY(0); }
+    50%{ transform:translate(-50%,-68%) translateY(-3px); }
+  }
+  .reaper{ animation:bob .5s ease-in-out infinite; }
+
+  @keyframes typeShake{
+    0%,100%{ transform:translateY(-62%) translateY(0); }
+    50%{ transform:translateY(-62%) translateY(-1.5px); }
+  }
+  .worker{ animation:typeShake .35s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="track-wrap">
+    <div class="track">
+      <div class="fill" id="fill"></div>
+    </div>
+
+    <div class="reaper" id="reaper">
+      <!-- original flying armored hero (not based on any copyrighted character) -->
+      <svg viewBox="0 0 60 76" fill="none">
+        <!-- thruster exhaust trail -->
+        <path d="M2 58 L14 50 L14 60 Z" fill="#ff8a3d" opacity="0.85"/>
+        <path d="M4 50 L15 46 L14 53 Z" fill="#ffd24d" opacity="0.6"/>
+        <!-- back arm, angled back for flight pose -->
+        <line x1="20" y1="34" x2="8" y2="40" stroke="#7a1f1f" stroke-width="7" stroke-linecap="round"/>
+        <!-- legs trailing behind -->
+        <path d="M22 48 Q16 58 10 66" stroke="#7a1f1f" stroke-width="7" stroke-linecap="round" fill="none"/>
+        <path d="M32 48 Q28 58 24 68" stroke="#7a1f1f" stroke-width="7" stroke-linecap="round" fill="none"/>
+        <!-- boot thrusters -->
+        <ellipse cx="10" cy="68" rx="5" ry="3" fill="#ffd24d"/>
+        <ellipse cx="24" cy="70" rx="5" ry="3" fill="#ffd24d"/>
+        <!-- torso -->
+        <path d="M16 20 Q29 14 42 20 L40 42 Q29 48 18 42 Z" fill="#c62828" stroke="#7a1f1f" stroke-width="2"/>
+        <!-- chest core glow -->
+        <circle cx="29" cy="27" r="4.5" fill="#ffe08a" stroke="#ffb300" stroke-width="1.5"/>
+        <!-- gold chest plating -->
+        <path d="M20 32 Q29 36 38 32 L37 40 Q29 44 21 40 Z" fill="#f2b90d" opacity="0.9"/>
+        <!-- front arm reaching forward, palm out -->
+        <line x1="38" y1="24" x2="50" y2="18" stroke="#c62828" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="52" cy="16" r="4.5" fill="#f2b90d" stroke="#c98f00" stroke-width="1.5"/>
+        <!-- helmet -->
+        <path d="M20 18 Q29 6 38 18 Q34 24 29 24 Q24 24 20 18 Z" fill="#c62828" stroke="#7a1f1f" stroke-width="2"/>
+        <path d="M23 17 Q29 13 35 17 Q31 20 29 20 Q27 20 23 17 Z" fill="#f2b90d"/>
+      </svg>
+    </div>
+
+    <div class="worker">
+      <!-- original shield-bearing hero (not based on any copyrighted character) -->
+      <svg viewBox="0 0 60 70" fill="none">
+        <!-- legs -->
+        <line x1="24" y1="46" x2="22" y2="62" stroke="#1c3f6e" stroke-width="7" stroke-linecap="round"/>
+        <line x1="34" y1="46" x2="36" y2="62" stroke="#1c3f6e" stroke-width="7" stroke-linecap="round"/>
+        <!-- torso -->
+        <path d="M18 18 Q29 12 40 18 L38 44 Q29 50 20 44 Z" fill="#2f5fa8" stroke="#17335c" stroke-width="2"/>
+        <!-- chest star -->
+        <circle cx="29" cy="28" r="6" fill="#eef3fb"/>
+        <path d="M29 23 L30.6 27 L35 27 L31.5 29.6 L32.8 34 L29 31.2 L25.2 34 L26.5 29.6 L23 27 L27.4 27 Z" fill="#2f5fa8"/>
+        <!-- arm holding shield -->
+        <line x1="18" y1="24" x2="10" y2="32" stroke="#2f5fa8" stroke-width="7" stroke-linecap="round"/>
+        <!-- round shield -->
+        <circle cx="8" cy="36" r="13" fill="#c62828" stroke="#7a1f1f" stroke-width="2"/>
+        <circle cx="8" cy="36" r="9" fill="#eef3fb"/>
+        <circle cx="8" cy="36" r="5.5" fill="#2f5fa8"/>
+        <circle cx="8" cy="36" r="2" fill="#eef3fb"/>
+        <!-- other arm -->
+        <line x1="40" y1="24" x2="48" y2="30" stroke="#2f5fa8" stroke-width="7" stroke-linecap="round"/>
+        <!-- head -->
+        <circle cx="29" cy="12" r="8" fill="#e7b98c"/>
+        <path d="M21 10 Q29 2 37 10 Q37 14 34 15 Q29 8 24 15 Q21 14 21 10 Z" fill="#1c3f6e"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="label">
+    <span>ฮีโร่กำลังบินเข้าช่วย</span>
+    <span class="days" id="daysLabel">5 days</span>
+  </div>
+</div>
+
+<script>
+  // ---- ตั้งค่าได้ตรงนี้ ----
+  const TOTAL_DAYS = 5;      // จำนวนวันเริ่มต้นที่จะนับถอยหลัง (แสดงผลเท่านั้น)
+  const LOOP_SECONDS = 4;    // เวลาที่ใช้วิ่งจบ 1 รอบ (วินาที) แบบ loading loop
+  // --------------------------
+
+  const fillEl = document.getElementById('fill');
+  const reaperEl = document.getElementById('reaper');
+  const daysEl = document.getElementById('daysLabel');
+
+  let startTime = null;
+
+  function frame(ts){
+    if(!startTime) startTime = ts;
+    const elapsed = (ts - startTime) / 1000;
+    let progress = (elapsed % LOOP_SECONDS) / LOOP_SECONDS; // 0 -> 1 วนซ้ำ
+    const pct = progress * 100;
+
+    fillEl.style.width = pct + '%';
+    reaperEl.style.left = pct + '%';
+
+    const remaining = Math.max(0, Math.ceil(TOTAL_DAYS * (1 - progress)));
+    daysEl.textContent = remaining + (remaining === 1 ? ' day' : ' days');
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+
+</body>
+</html>
