@@ -486,6 +486,8 @@
   <footer>TAP AN ICON TO SELECT APP OR SHEET ACCESS</footer>
 </div>
 
+<div id="bgMusic" style="position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;bottom:0;left:0;"></div>
+
 <div class="backdrop" id="backdrop"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-head">
@@ -715,6 +717,50 @@ backdrop.addEventListener("click", ()=>{ sfx.cancel(); closeSheet(); });
     field.appendChild(p);
   }
 })();
+
+// ---- background music (YouTube, plays on first tap due to browser autoplay rules) ----
+const BG_VIDEO_ID = "pAgnJDJN4VA"; // AC/DC - official video, played hidden/off-screen for audio only
+let ytPlayer = null;
+let ytReady = false;
+let musicStarted = false;
+
+function onYouTubeIframeAPIReady(){
+  ytPlayer = new YT.Player("bgMusic", {
+    height: "1",
+    width: "1",
+    videoId: BG_VIDEO_ID,
+    playerVars: { autoplay: 0, controls: 0, disablekb: 1, playsinline: 1, loop: 1, playlist: BG_VIDEO_ID },
+    events: {
+      onReady: function(){ ytReady = true; startMusicIfNeeded(); },
+      onStateChange: function(e){
+        if(e.data === YT.PlayerState.ENDED){ ytPlayer.playVideo(); } // loop
+      }
+    }
+  });
+}
+
+function startMusicIfNeeded(){
+  if(musicStarted || !ytReady || !ytPlayer) return;
+  try{
+    ytPlayer.playVideo();
+    musicStarted = true;
+  }catch(e){ /* ignore */ }
+}
+
+(function loadYouTubeApi(){
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+})();
+
+// browsers require a user gesture before audio can play — this catches the first tap anywhere
+function firstGestureHandler(){
+  startMusicIfNeeded();
+  document.removeEventListener("click", firstGestureHandler);
+  document.removeEventListener("touchend", firstGestureHandler);
+}
+document.addEventListener("click", firstGestureHandler);
+document.addEventListener("touchend", firstGestureHandler);
 </script>
 </body>
 </html>
