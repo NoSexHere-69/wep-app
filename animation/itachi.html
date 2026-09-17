@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Deadline Loading</title>
+<style>
+  :root{
+    --bg:#05070c;
+    --bar-bg:#12151f;
+    --red:#ff3b3b;
+    --red-dark:#7a0d0d;
+    --gold:#c98a3d;
+    --cyan:#b3222c;
+    --text:#e6e6e6;
+    --accent:#ffbe3d;
+  }
+  html,body{
+    margin:0;
+    height:100%;
+    background:radial-gradient(ellipse at 50% 40%, #0d1220 0%, var(--bg) 70%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Courier New', monospace;
+    overflow:hidden;
+  }
+  .stage{
+    width:min(760px,92vw);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:26px;
+    position:relative;
+  }
+  .stage::before{
+    /* faint speed-line backdrop for drama */
+    content:'';
+    position:absolute;
+    inset:-60px -20px;
+    background:repeating-linear-gradient(100deg, rgba(179,34,44,0.06) 0px, rgba(179,34,44,0.06) 1px, transparent 1px, transparent 26px);
+    pointer-events:none;
+    z-index:-1;
+  }
+  .track-wrap{
+    position:relative;
+    width:100%;
+    height:130px;
+  }
+  .track{
+    position:absolute;
+    top:50%;
+    left:0;
+    right:0;
+    transform:translateY(-50%);
+    height:20px;
+    background:var(--bar-bg);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(179,34,44,0.2), 0 0 18px rgba(255,59,59,0.08);
+  }
+  .fill{
+    position:absolute;
+    top:0;
+    left:0;
+    bottom:0;
+    width:0%;
+    background:linear-gradient(90deg,var(--red-dark),var(--red) 70%,var(--gold));
+    border-radius:10px 0 0 10px;
+    box-shadow:0 0 14px rgba(255,59,59,0.6);
+  }
+  .reaper{
+    position:absolute;
+    top:50%;
+    left:0%;
+    width:72px;
+    height:90px;
+    transform:translate(-50%,-72%);
+    transition:left .05s linear;
+    filter:drop-shadow(0 0 10px rgba(255,90,20,0.55));
+  }
+  .worker{
+    position:absolute;
+    top:50%;
+    right:-6px;
+    width:66px;
+    height:82px;
+    transform:translateY(-66%);
+    filter:drop-shadow(0 0 8px rgba(179,34,44,0.4));
+  }
+  .label{
+    text-align:center;
+    color:var(--accent);
+    letter-spacing:2px;
+    font-size:14px;
+    text-transform:uppercase;
+    text-shadow:0 0 10px rgba(255,190,61,0.4);
+  }
+  .label .days{
+    font-size:26px;
+    font-weight:bold;
+    display:block;
+    margin-top:6px;
+    color:#fff;
+    text-shadow:0 0 14px rgba(255,59,59,0.6);
+    letter-spacing:1px;
+  }
+  svg{ display:block; width:100%; height:100%; overflow:visible; }
+
+  @keyframes bob{
+    0%,100%{ transform:translate(-50%,-72%) translateY(0) rotate(-4deg); }
+    50%{ transform:translate(-50%,-72%) translateY(-4px) rotate(-7deg); }
+  }
+  .reaper{ animation:bob .45s ease-in-out infinite; }
+
+  @keyframes stance{
+    0%,100%{ transform:translateY(-66%) translateY(0); }
+    50%{ transform:translateY(-66%) translateY(-2px); }
+  }
+  .worker{ animation:stance .9s ease-in-out infinite; }
+
+  .eye-rings{
+    position:absolute;
+    inset:-40% -10%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    z-index:-1;
+  }
+  .eye-ring{
+    position:absolute;
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:2px solid rgba(255,196,110,0.55);
+    box-shadow:0 0 18px rgba(255,196,110,0.35);
+    opacity:0;
+  }
+  .eye-ring.pulse{
+    animation:ringExpand 0.9s cubic-bezier(.15,.6,.4,1) forwards;
+  }
+  .eye-ring.pulse.d2{ animation-delay:.08s; }
+  .eye-ring.pulse.d3{ animation-delay:.16s; }
+  @keyframes ringExpand{
+    0%{ width:10px; height:10px; opacity:0.9; border-width:3px; }
+    70%{ opacity:0.5; }
+    100%{ width:520px; height:520px; opacity:0; border-width:1px; }
+  }
+  .reaper-form{
+    position:absolute;
+    inset:0;
+    transition:opacity .18s linear;
+  }
+  .reaper-form.hidden{ opacity:0; pointer-events:none; }
+  .reaper{ overflow:visible; }
+
+  @keyframes flicker{
+    0%,100%{ opacity:1; }
+    50%{ opacity:.55; }
+  }
+  .core-glow{ animation:flicker 1s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="track-wrap">
+    <div class="track">
+      <div class="fill" id="fill"></div>
+    </div>
+
+    <div class="eye-rings" id="eyeRings">
+      <div class="eye-ring"></div>
+      <div class="eye-ring d2"></div>
+      <div class="eye-ring d3"></div>
+    </div>
+
+    <div class="reaper" id="reaper">
+      <div class="reaper-form" id="formCrow">
+        <!-- original crow silhouette, mid-flight -->
+        <svg viewBox="0 0 90 100" fill="none">
+          <defs>
+            <linearGradient id="crowGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#3a3a42"/>
+              <stop offset="100%" stop-color="#0c0c0e"/>
+            </linearGradient>
+          </defs>
+          <!-- trailing motion streaks -->
+          <path d="M2 50 L20 46 L18 52 L4 58 Z" fill="#ffd58a" opacity="0.3"/>
+          <!-- tail feathers -->
+          <path d="M30 48 Q14 58 6 72 Q18 66 34 56 Z" fill="url(#crowGrad)"/>
+          <!-- back wing, swept up -->
+          <path d="M38 44 Q20 20 4 14 Q10 34 30 50 Z" fill="url(#crowGrad)"/>
+          <!-- body -->
+          <ellipse cx="46" cy="50" rx="16" ry="11" fill="url(#crowGrad)"/>
+          <!-- front wing, swept down -->
+          <path d="M50 46 Q68 60 84 66 Q76 44 56 38 Z" fill="url(#crowGrad)"/>
+          <!-- head and beak -->
+          <circle cx="62" cy="42" r="8" fill="url(#crowGrad)"/>
+          <path d="M69 41 L80 39 L70 46 Z" fill="#2a2a2f"/>
+          <circle cx="64" cy="40" r="1.4" fill="#ffbe6a"/>
+        </svg>
+      </div>
+
+      <div class="reaper-form hidden" id="formHuman">
+        <!-- original character, ordinary person in a dawn-colored cloak -->
+        <svg viewBox="0 0 90 100" fill="none">
+          <defs>
+            <linearGradient id="cloakGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffd58a"/>
+              <stop offset="45%" stop-color="#f4906b"/>
+              <stop offset="100%" stop-color="#c14e6b"/>
+            </linearGradient>
+            <radialGradient id="starGlint" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#fff6d9"/>
+              <stop offset="60%" stop-color="#cfd6dd"/>
+              <stop offset="100%" stop-color="#cfd6dd" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- a few soft clouds drifting, matching the dawn mood -->
+          <g fill="#fff" opacity="0.35">
+            <ellipse cx="6" cy="14" rx="7" ry="2.6"/>
+            <ellipse cx="4" cy="34" rx="6" ry="2.2"/>
+            <ellipse cx="8" cy="68" rx="6" ry="2.2"/>
+          </g>
+
+          <!-- flowing cloak trailing behind, warm dawn gradient -->
+          <path d="M6 38 Q-4 62 10 90 Q22 72 30 46 Z" fill="url(#cloakGrad)" opacity="0.95"/>
+          <path d="M10 42 Q4 62 12 84 Q17 68 22 48 Z" fill="#ffe3a8" opacity="0.4"/>
+
+          <!-- trailing legs mid-stride, ordinary trousers -->
+          <path d="M38 60 Q28 70 26 84 Q30 87 34 85 Q38 72 46 64 Z" fill="#5a4636" stroke="#3a2c20" stroke-width="1.2"/>
+          <path d="M46 62 Q46 76 44 90 Q49 91 52 88 Q56 74 54 64 Z" fill="#5a4636" stroke="#3a2c20" stroke-width="1.2"/>
+          <ellipse cx="30" cy="86" rx="5" ry="2.6" fill="#3a2a1c"/>
+          <ellipse cx="49" cy="90" rx="5" ry="2.6" fill="#3a2a1c"/>
+
+          <!-- back arm, swept behind, natural bend at elbow -->
+          <path d="M32 42 Q20 44 14 52 Q17 56 21 55 Q28 48 36 48 Z" fill="url(#cloakGrad)" stroke="#a83f5a" stroke-width="1"/>
+          <ellipse cx="15" cy="53" rx="3" ry="4" fill="#e7b98c"/>
+
+          <!-- torso, plain tunic under the cloak -->
+          <path d="M28 24 Q46 16 62 24 Q60 34 57 42 Q46 48 38 44 Q33 36 28 24 Z" fill="url(#cloakGrad)" stroke="#a83f5a" stroke-width="1.5"/>
+          <path d="M34 28 Q46 24 54 28 L52 40 Q46 44 40 40 Z" fill="#e9d8b8" opacity="0.7"/>
+
+          <!-- throwing arm: shoulder, forearm bend, hand with fingers -->
+          <path d="M56 26 Q68 20 76 16 Q78 19 76 22 Q68 26 60 30 Z" fill="url(#cloakGrad)" stroke="#a83f5a" stroke-width="1"/>
+          <ellipse cx="78" cy="15" rx="4" ry="3.4" fill="#e7b98c"/>
+          <path d="M79 12 L83 9 M80 14 L85 12 M80 16 L84 16" stroke="#e7b98c" stroke-width="1.4" stroke-linecap="round"/>
+
+          <!-- shuriken volley streaking toward the target -->
+          <g transform="translate(80,9) rotate(15)">
+            <circle r="9" fill="url(#starGlint)"/>
+            <path d="M0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2 Z" fill="#e2e6ea" stroke="#8a8f96" stroke-width="1"/>
+          </g>
+          <g transform="translate(68,24) rotate(-20) scale(0.7)">
+            <path d="M0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2 Z" fill="#e2e6ea" stroke="#8a8f96" stroke-width="1"/>
+          </g>
+          <g transform="translate(72,32) rotate(40) scale(0.6)">
+            <path d="M0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2 Z" fill="#e2e6ea" stroke="#8a8f96" stroke-width="1"/>
+          </g>
+
+          <!-- head: rounder, ordinary human proportions -->
+          <path d="M35 14 Q46 4 57 14 Q58 24 52 29 Q46 32 40 29 Q34 24 35 14 Z" fill="#e7b98c"/>
+
+          <!-- loose hood resting back off the head, same dawn fabric -->
+          <path d="M31 12 Q46 -2 61 12 Q60 20 54 24 Q57 14 48 10 Q46 9 44 10 Q35 14 38 24 Q32 20 31 12 Z" fill="url(#cloakGrad)" opacity="0.9"/>
+
+          <!-- ordinary hair, simple short-to-medium style -->
+          <path d="M35 14 Q33 5 46 3 Q59 5 57 14 Q52 8 46 8 Q40 8 35 14 Z" fill="#4a3527"/>
+          <path d="M35 15 Q31 20 32 28" stroke="#4a3527" stroke-width="2" fill="none" opacity="0.8"/>
+
+          <!-- open, friendly eyes and relaxed brow -->
+          <path d="M40 21 Q43 19.5 46 21" stroke="#3a2a1c" stroke-width="1" fill="none"/>
+          <circle cx="42.5" cy="22.5" r="1.3" fill="#3a2a1c"/>
+          <circle cx="49" cy="22" r="1.3" fill="#3a2a1c"/>
+          <path d="M46 22 L47 25" stroke="#c99a72" stroke-width="1" stroke-linecap="round"/>
+          <path d="M43 27 Q46 29 49 27" stroke="#8a5a3c" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="worker">
+      <!-- original training-dummy target (not based on any copyrighted character) -->
+      <svg viewBox="0 0 70 100" fill="none">
+        <defs>
+          <linearGradient id="strawGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#e8c78a"/>
+            <stop offset="55%" stop-color="#cf9f57"/>
+            <stop offset="100%" stop-color="#a97a38"/>
+          </linearGradient>
+          <linearGradient id="woodGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#9c6a3e"/>
+            <stop offset="50%" stop-color="#7a4d28"/>
+            <stop offset="100%" stop-color="#5c3a20"/>
+          </linearGradient>
+        </defs>
+
+        <!-- ground shadow -->
+        <ellipse cx="34" cy="95" rx="20" ry="4" fill="#000" opacity="0.25"/>
+
+        <!-- support post, slightly tapered -->
+        <path d="M29 8 L38 8 L36 88 L31 88 Z" fill="url(#woodGrad)" stroke="#4a2f18" stroke-width="1.5"/>
+
+        <!-- rounded straw head-bundle on top -->
+        <ellipse cx="33.5" cy="10" rx="9" ry="7" fill="url(#strawGrad)" stroke="#8a6633" stroke-width="1.5"/>
+        <path d="M26 9 Q33 4 41 9" stroke="#8a6633" stroke-width="1" fill="none" opacity="0.6"/>
+
+        <!-- one arm angled down-forward, the other up-back, natural asymmetry -->
+        <path d="M33 30 L58 22 L60 28 L35 36 Z" fill="url(#woodGrad)" stroke="#4a2f18" stroke-width="1.5"/>
+        <path d="M33 33 L10 40 L9 46 L33 39 Z" fill="url(#woodGrad)" stroke="#4a2f18" stroke-width="1.5"/>
+        <circle cx="58" cy="24" r="2.6" fill="#5c3a20"/>
+        <circle cx="10" cy="42" r="2.6" fill="#5c3a20"/>
+
+        <!-- torso, tapered straw bundle, slightly leaning -->
+        <path d="M22 32 Q19 52 24 78 Q33 84 43 78 Q47 52 44 32 Q33 26 22 32 Z" fill="url(#strawGrad)" stroke="#8a6633" stroke-width="1.5"/>
+
+        <!-- rope wraps spiraling around the torso for texture -->
+        <path d="M20 40 Q33 46 46 39" stroke="#7a5222" stroke-width="2" fill="none" opacity="0.55"/>
+        <path d="M19 52 Q33 58 46 51" stroke="#7a5222" stroke-width="2" fill="none" opacity="0.55"/>
+        <path d="M20 64 Q33 70 45 63" stroke="#7a5222" stroke-width="2" fill="none" opacity="0.55"/>
+        <path d="M22 75 Q33 79 43 74" stroke="#7a5222" stroke-width="2" fill="none" opacity="0.5"/>
+
+        <!-- faded straw strands at base -->
+        <path d="M25 78 L22 92" stroke="#b78a45" stroke-width="1.5" opacity="0.6"/>
+        <path d="M30 79 L29 92" stroke="#b78a45" stroke-width="1.5" opacity="0.6"/>
+        <path d="M37 79 L39 92" stroke="#b78a45" stroke-width="1.5" opacity="0.6"/>
+        <path d="M42 78 L45 91" stroke="#b78a45" stroke-width="1.5" opacity="0.6"/>
+
+        <!-- target rings, offset slightly off-center for a natural feel -->
+        <circle cx="31" cy="54" r="11" fill="none" stroke="#b3222c" stroke-width="2.2" opacity="0.9"/>
+        <circle cx="31" cy="54" r="6" fill="none" stroke="#b3222c" stroke-width="2.2" opacity="0.9"/>
+        <circle cx="31" cy="54" r="2" fill="#b3222c"/>
+
+        <!-- shuriken already stuck in, at varied angles -->
+        <g transform="translate(21,46) rotate(25) scale(0.5)">
+          <path d="M0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2 Z" fill="#cfd6dd" stroke="#8a8f96" stroke-width="1"/>
+        </g>
+        <g transform="translate(39,60) rotate(-40) scale(0.45)">
+          <path d="M0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2 Z" fill="#cfd6dd" stroke="#8a8f96" stroke-width="1"/>
+        </g>
+        <g transform="translate(30,68) rotate(10) scale(0.4)">
+          <path d="M0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2 Z" fill="#cfd6dd" stroke="#8a8f96" stroke-width="1"/>
+        </g>
+
+        <!-- base plate -->
+        <path d="M16 88 L52 88 L48 96 L20 96 Z" fill="url(#woodGrad)" stroke="#4a2f18" stroke-width="1.5"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="label">
+    <span>กำลังปาดาวเข้าเป้า</span>
+    <span class="days" id="daysLabel">5 days</span>
+  </div>
+</div>
+
+<script>
+  // ---- ตั้งค่าได้ตรงนี้ ----
+  const TOTAL_DAYS = 5;      // จำนวนวันเริ่มต้นที่จะนับถอยหลัง (แสดงผลเท่านั้น)
+  const LOOP_SECONDS = 4;    // เวลาที่ใช้วิ่งจบ 1 รอบ (วินาที) แบบ loading loop
+  // --------------------------
+
+  const fillEl = document.getElementById('fill');
+  const reaperEl = document.getElementById('reaper');
+  const daysEl = document.getElementById('daysLabel');
+  const formCrow = document.getElementById('formCrow');
+  const formHuman = document.getElementById('formHuman');
+  const rings = document.querySelectorAll('.eye-ring');
+
+  const TRANSFORM_AT = 0.8; // switch from crow to human this far along the bar
+  let isHuman = false;
+
+  let startTime = null;
+
+  function frame(ts){
+    if(!startTime) startTime = ts;
+    const elapsed = (ts - startTime) / 1000;
+    let progress = (elapsed % LOOP_SECONDS) / LOOP_SECONDS; // 0 -> 1 วนซ้ำ
+    const pct = progress * 100;
+
+    fillEl.style.width = pct + '%';
+    reaperEl.style.left = pct + '%';
+
+    // crow flies in, then transforms back into a person right as it reaches the dummy
+    const shouldBeHuman = progress >= TRANSFORM_AT;
+    if(shouldBeHuman !== isHuman){
+      isHuman = shouldBeHuman;
+      formCrow.classList.toggle('hidden', isHuman);
+      formHuman.classList.toggle('hidden', !isHuman);
+      if(isHuman){
+        // fire the glowing rings from the center of the screen at the moment of the strike
+        rings.forEach(r => {
+          r.classList.remove('pulse');
+          void r.offsetWidth; // restart the animation
+          r.classList.add('pulse');
+        });
+      }
+    }
+    
+    const remaining = Math.max(0, Math.ceil(TOTAL_DAYS * (1 - progress)));
+    daysEl.textContent = remaining + (remaining === 1 ? ' day' : ' days');
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+
+</body>
+</html>
