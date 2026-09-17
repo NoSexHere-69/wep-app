@@ -98,6 +98,66 @@
     100% { transform:translate(var(--drift,24px), -112vh); opacity:0; }
   }
 
+  /* ---- fine dot-grid HUD backdrop ---- */
+  .bg-grid{
+    position:fixed; inset:0;
+    z-index:-1;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(75,217,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(75,217,255,0.05) 1px, transparent 1px);
+    background-size:42px 42px;
+    -webkit-mask:radial-gradient(ellipse 70% 55% at 50% 38%, black, transparent 85%);
+    mask:radial-gradient(ellipse 70% 55% at 50% 38%, black, transparent 85%);
+  }
+
+  /* ---- ambient animated radar / sonar HUD (decorative, sits behind content) ---- */
+  .radar-bg{
+    position:fixed;
+    top:46%; left:50%;
+    width:min(150vmin, 1500px); height:min(150vmin, 1500px);
+    transform:translate(-50%,-50%);
+    z-index:-1;
+    pointer-events:none;
+    opacity:.15;
+  }
+  .radar-ring{
+    position:absolute; top:50%; left:50%;
+    border-radius:50%;
+    border:1px solid var(--line-bright);
+    transform:translate(-50%,-50%);
+  }
+  .radar-ring.r1{width:16%; height:16%;}
+  .radar-ring.r2{width:34%; height:34%;}
+  .radar-ring.r3{width:54%; height:54%;}
+  .radar-ring.r4{width:76%; height:76%; border-style:dashed; animation:radarRingSpin 90s linear infinite;}
+  .radar-ring.r5{width:100%; height:100%;}
+  .radar-spokes{
+    position:absolute; inset:0; border-radius:50%;
+    background:repeating-conic-gradient(from 0deg, var(--line-bright) 0deg .35deg, transparent .35deg 45deg);
+    -webkit-mask:radial-gradient(circle, transparent 7%, black 7.4%);
+    mask:radial-gradient(circle, transparent 7%, black 7.4%);
+  }
+  .radar-sweep{
+    position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 0deg, rgba(75,217,255,0.6), transparent 20%);
+    animation:radarSweepSpin 5s linear infinite;
+    mix-blend-mode:screen;
+    -webkit-mask:radial-gradient(circle, transparent 6%, black 7%);
+    mask:radial-gradient(circle, transparent 6%, black 7%);
+  }
+  .radar-core{
+    position:absolute; top:50%; left:50%;
+    width:8px; height:8px;
+    background:var(--cyan);
+    border-radius:2px;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 10px 3px rgba(75,217,255,.7);
+    animation:pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes radarRingSpin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+  @keyframes radarSweepSpin{ to{ transform:rotate(360deg); } }
+
   .mono{font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;}
 
   .wrap{max-width:98vw;margin:0 auto;}
@@ -488,6 +548,39 @@
     text-transform:uppercase;
   }
 
+  /* ---- live HUD telemetry readout ---- */
+  .hud-readout{
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(10px, 1.3vw, 12px);
+    letter-spacing:.1em;
+    color:var(--muted);
+    margin:8px 0 0;
+    text-transform:uppercase;
+    opacity:.8;
+  }
+
+  /* ---- target-lock reticle (flashes on an icon when selected) ---- */
+  .app-icon-ring{position:relative;}
+  .reticle{
+    position:absolute; inset:-9px;
+    opacity:0;
+    transform:scale(1.35);
+    pointer-events:none;
+    transition:opacity .16s ease, transform .16s cubic-bezier(.22,.9,.3,1);
+  }
+  .reticle.show{opacity:1; transform:scale(1);}
+  .tick{
+    position:absolute;
+    width:13px; height:13px;
+    border-color:var(--amber);
+    border-style:solid;
+    filter:drop-shadow(0 0 4px rgba(255,180,84,.7));
+  }
+  .tick.tl{top:0; left:0; border-width:2px 0 0 2px;}
+  .tick.tr{top:0; right:0; border-width:2px 2px 0 0;}
+  .tick.bl{bottom:0; left:0; border-width:0 0 2px 2px;}
+  .tick.br{bottom:0; right:0; border-width:0 2px 2px 0;}
+
   /* ---- icon fallback (no favicon found) ---- */
   .icon-fallback{
     width:100%;height:100%;
@@ -503,6 +596,17 @@
 </head>
 <body>
 <div class="bg-fx"></div>
+<div class="bg-grid"></div>
+<div class="radar-bg" aria-hidden="true">
+  <div class="radar-spokes"></div>
+  <div class="radar-ring r1"></div>
+  <div class="radar-ring r2"></div>
+  <div class="radar-ring r3"></div>
+  <div class="radar-ring r4"></div>
+  <div class="radar-ring r5"></div>
+  <div class="radar-sweep"></div>
+  <div class="radar-core"></div>
+</div>
 <div class="particles" id="particles"></div>
 
 <div class="tap-start" id="tapStart">
@@ -528,6 +632,7 @@
       <h1>Armr store</h1>
       <p class="status-line"><span class="status-dot"></span>SYSTEMS ONLINE &middot; <span id="countLabel">0</span> APPS LINKED</p>
       <p class="greeting" id="greeting"></p>
+      <p class="hud-readout" id="hudReadout"></p>
     </div>
   </header>
 
@@ -655,6 +760,21 @@ loadApps();
 // boot typing sequence now starts after the tap-to-start overlay (see below)
 // ------------------------------------------------
 
+// ---- live HUD telemetry readout (clock + uptime since page load) ----
+const HUD_BOOT_TIME = Date.now();
+function pad2(n){ return String(n).padStart(2, "0"); }
+function updateHudReadout(){
+  const el = document.getElementById("hudReadout");
+  if(!el) return;
+  const now = new Date();
+  const upSec = Math.floor((Date.now() - HUD_BOOT_TIME) / 1000);
+  el.textContent =
+    `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} `
+    + `· UPTIME ${pad2(Math.floor(upSec/3600))}:${pad2(Math.floor((upSec%3600)/60))}:${pad2(upSec%60)}`;
+}
+updateHudReadout();
+setInterval(updateHudReadout, 1000);
+
 // ---- HUD sound effects (synthesized, no audio files needed) ----
 let audioCtx = null;
 function getCtx(){
@@ -706,6 +826,7 @@ function renderGrid(){
   grid.innerHTML = DATA.map((app, i) => `
     <button class="app" data-index="${i}">
       <div class="app-icon-ring">
+        <div class="reticle"><span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span></div>
         <div class="app-icon">
           ${iconOrFallback(app)}
         </div>
@@ -716,6 +837,11 @@ function renderGrid(){
   grid.querySelectorAll(".app").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       sfx.tap();
+      const reticle = btn.querySelector(".reticle");
+      if(reticle){
+        reticle.classList.add("show");
+        setTimeout(()=> reticle.classList.remove("show"), 650);
+      }
       openSheet(DATA[btn.dataset.index]);
     });
   });
@@ -728,7 +854,7 @@ const sheet = document.getElementById("sheet");
 function openSheet(app){
   document.getElementById("sheetIcon").innerHTML = iconOrFallback(app);
   document.getElementById("sheetTitle").textContent = app.name;
-  document.getElementById("sheetSub").textContent = (app.group || "UNLINKED") + " · AUTO-SYNCED";
+  typeLine(document.getElementById("sheetSub"), (app.group || "UNLINKED") + " · MODULE READY", 12);
   document.getElementById("btnApp").href = app.webapp || "#";
   document.getElementById("btnApp").style.display = app.webapp ? "" : "none";
   document.getElementById("btnSheet").href = app.sheet || "#";
